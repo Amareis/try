@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>С Днем Святого Валентина!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            font-family: 'Georgia', serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        /* Start screen */
+        .start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ff6b81 0%, #ff8fa3 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            cursor: pointer;
+            transition: opacity 0.8s ease;
+        }
+
+        .start-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .start-screen h1 {
+            color: white;
+            font-size: 36px;
+            text-align: center;
+            padding: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .start-screen .tap-hint {
+            color: white;
+            font-size: 20px;
+            margin-top: 30px;
+            opacity: 0.8;
+            animation: bounce 1.5s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .container.visible {
+            opacity: 1;
+        }
+
+        /* Scratch canvas overlay */
+        #scratchCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            cursor: pointer;
+        }
+
+        /* Hidden card underneath */
+        .card {
+            background: linear-gradient(145deg, #fff5f5, #ffe4e8);
+            padding: 60px 50px;
+            border-radius: 20px;
+            box-shadow:
+                0 20px 60px rgba(255, 105, 135, 0.3),
+                0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+            text-align: center;
+            max-width: 500px;
+            position: relative;
+            animation: float 3s ease-in-out infinite;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .card.revealed {
+            opacity: 1;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .heart {
+            color: #ff4757;
+            font-size: 80px;
+            animation: heartbeat 1.5s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(1.1); }
+            50% { transform: scale(1); }
+            75% { transform: scale(1.1); }
+        }
+
+        .date {
+            font-size: 24px;
+            color: #ff6b81;
+            margin-bottom: 30px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .message {
+            font-size: 28px;
+            color: #c0392b;
+            margin-bottom: 40px;
+            line-height: 1.6;
+            font-style: italic;
+        }
+
+        .from {
+            font-size: 20px;
+            color: #e74c3c;
+            padding-top: 30px;
+            border-top: 2px solid #ffb8c6;
+            letter-spacing: 2px;
+        }
+
+        .from span {
+            font-weight: bold;
+            font-size: 24px;
+        }
+
+        /* Floating hearts background */
+        .bg-heart {
+            position: fixed;
+            color: rgba(255, 107, 129, 0.3);
+            font-size: 30px;
+            animation: rise 8s ease-in infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        @keyframes rise {
+            0% {
+                opacity: 0;
+                transform: translateY(100vh) rotate(0deg);
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100vh) rotate(720deg);
+            }
+        }
+
+        .bg-heart:nth-child(1) { left: 10%; animation-delay: 0s; font-size: 25px; }
+        .bg-heart:nth-child(2) { left: 20%; animation-delay: 2s; font-size: 35px; }
+        .bg-heart:nth-child(3) { left: 35%; animation-delay: 4s; font-size: 20px; }
+        .bg-heart:nth-child(4) { left: 50%; animation-delay: 1s; font-size: 40px; }
+        .bg-heart:nth-child(5) { left: 65%; animation-delay: 3s; font-size: 28px; }
+        .bg-heart:nth-child(6) { left: 80%; animation-delay: 5s; font-size: 32px; }
+        .bg-heart:nth-child(7) { left: 90%; animation-delay: 2.5s; font-size: 22px; }
+
+        /* Scratch particles */
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 100;
+            animation: particleFade 1.5s ease-out forwards;
+        }
+
+        @keyframes particleFade {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1) rotate(0deg);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px) scale(0.5) rotate(360deg);
+            }
+        }
+
+        /* Progress indicator */
+        .progress {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            color: #ff4757;
+            z-index: 20;
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
+            transition: opacity 0.5s ease;
+        }
+
+        .progress.hidden {
+            opacity: 0;
+        }
+
+        .close-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 71, 87, 0.8);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 50px;
+            font-size: 16px;
+            cursor: pointer;
+            font-family: 'Georgia', serif;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4);
+            z-index: 30;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .close-btn.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 71, 87, 1);
+            transform: scale(1.05);
+        }
+
+        /* Hint text */
+        .hint {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            z-index: 15;
+            pointer-events: none;
+            animation: pulse 2s ease-in-out infinite;
+            transition: opacity 0.5s ease;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        .hint.hidden {
+            opacity: 0 !important;
+            animation: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating background hearts -->
+    <div class="bg-heart">♥</div>
+    <div class="bg-heart">♥</div>
+    <div class="bg-heart">♥</div>
+    <div class="bg-heart">♥</div>
+    <div class="bg-heart">♥</div>
+    <div class="bg-heart">♥</div>
+    <div class="bg-heart">♥</div>
+
+    <!-- Start screen -->
+    <div class="start-screen" id="startScreen">
+        <h1>Карина! ♥</h1>
+        <div class="tap-hint">Ткни на экран чтобы начать</div>
+    </div>
+
+    <div class="container" id="container">
+        <div class="hint" id="hint">✨ Сотри, чтобы открыть! ✨</div>
+
+        <div class="card" id="card">
+            <div class="heart">♥</div>
+            <div class="date">14 февраля</div>
+            <div class="message">
+                С Днём Святого Валентина!<br>
+                Желаю любить и быть любимой!
+            </div>
+            <div class="from">
+                От <span>Полины</span>
+            </div>
+        </div>
+
+        <canvas id="scratchCanvas"></canvas>
+    </div>
+
+    <div class="progress" id="progress">Прогресс: 0%</div>
+    <button class="close-btn" id="closeBtn" onclick="closeCard()">Закрыть</button>
+
+    <script>
+        const canvas = document.getElementById('scratchCanvas');
+        const ctx = canvas.getContext('2d');
+        const card = document.getElementById('card');
+        const progressEl = document.getElementById('progress');
+        const closeBtn = document.getElementById('closeBtn');
+        const hint = document.getElementById('hint');
+        const startScreen = document.getElementById('startScreen');
+        const container = document.getElementById('container');
+
+        let isDrawing = false;
+        let isRevealed = false;
+        let lastX = 0;
+        let lastY = 0;
+        let gameStarted = false;
+
+        // Start the game
+        function startGame() {
+            if (gameStarted) return;
+            gameStarted = true;
+
+            // Hide start screen
+            startScreen.classList.add('hidden');
+
+            // Show container
+            setTimeout(() => {
+                container.classList.add('visible');
+                setupCanvas();
+            }, 800);
+
+            // Remove start screen after animation
+            setTimeout(() => {
+                startScreen.style.display = 'none';
+            }, 1600);
+        }
+
+        // Setup canvas
+        function setupCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // Draw scratch layer
+            ctx.fillStyle = '#ff6b81';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Add pattern
+            ctx.fillStyle = '#ff8fa3';
+            for (let i = 0; i < 50; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const size = Math.random() * 30 + 10;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Create heart particle
+        function createHeartParticle(x, y) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.innerHTML = '♥';
+            particle.style.left = x + 'px';
+            particle.style.top = y + 'px';
+            particle.style.fontSize = (Math.random() * 20 + 15) + 'px';
+            particle.style.color = `hsl(${Math.random() * 60 + 330}, 80%, 60%)`;
+            document.body.appendChild(particle);
+
+            setTimeout(() => particle.remove(), 1500);
+        }
+
+        // Scratch function
+        function scratch(x, y) {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            ctx.arc(x, y, 40, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Create heart particles
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    createHeartParticle(
+                        x + (Math.random() - 0.5) * 50,
+                        y + (Math.random() - 0.5) * 50
+                    );
+                }, i * 50);
+            }
+
+            // Hide hint on first scratch
+            hideHint();
+
+            // Check progress
+            checkProgress();
+        }
+
+        // Check scratch progress
+        function checkProgress() {
+            if (isRevealed) return;
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+            let transparentPixels = 0;
+
+            for (let i = 3; i < pixels.length; i += 4) {
+                if (pixels[i] === 0) {
+                    transparentPixels++;
+                }
+            }
+
+            const progress = Math.round((transparentPixels / (pixels.length / 4)) * 100);
+            progressEl.textContent = `Прогресс: ${progress}%`;
+
+            // Increased threshold to 75%
+            if (progress > 75 && !isRevealed) {
+                revealCard();
+            }
+        }
+
+        // Reveal card
+        function revealCard() {
+            isRevealed = true;
+            canvas.style.transition = 'opacity 1s ease';
+            canvas.style.opacity = '0';
+            progressEl.classList.add('hidden');
+            card.classList.add('revealed');
+            closeBtn.classList.add('visible');
+
+            // Create celebration hearts
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    createHeartParticle(
+                        Math.random() * window.innerWidth,
+                        window.innerHeight
+                    );
+                }, i * 100);
+            }
+
+            // Remove canvas after animation
+            setTimeout(() => {
+                canvas.style.display = 'none';
+            }, 1000);
+        }
+
+        // Event handlers
+        function handleStart(e) {
+            isDrawing = true;
+            const pos = getPos(e);
+            lastX = pos.x;
+            lastY = pos.y;
+            scratch(pos.x, pos.y);
+        }
+
+        function handleMove(e) {
+            if (!isDrawing) return;
+            const pos = getPos(e);
+            scratch(pos.x, pos.y);
+            lastX = pos.x;
+            lastY = pos.y;
+        }
+
+        function handleEnd() {
+            isDrawing = false;
+        }
+
+        function getPos(e) {
+            if (e.touches) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+            return { x: e.clientX, y: e.clientY };
+        }
+
+        // Start screen events
+        startScreen.addEventListener('click', (e) => {
+            // Request fullscreen on user gesture
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => console.log('Fullscreen error:', err));
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen().catch(err => console.log('Fullscreen error:', err));
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen().catch(err => console.log('Fullscreen error:', err));
+            }
+            startGame();
+        });
+
+        // Mouse events
+        canvas.addEventListener('mousedown', handleStart);
+        canvas.addEventListener('mousemove', handleMove);
+        canvas.addEventListener('mouseup', handleEnd);
+        canvas.addEventListener('mouseleave', handleEnd);
+
+        // Touch events
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleStart(e);
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            handleMove(e);
+        });
+        canvas.addEventListener('touchend', handleEnd);
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            if (!isRevealed && gameStarted) {
+                setupCanvas();
+            }
+        });
+
+        // Close tab function
+        function closeCard() {
+            window.close();
+        }
+
+        // Hide hint on first interaction
+        let hintHidden = false;
+        function hideHint() {
+            if (!hintHidden) {
+                hintHidden = true;
+                hint.style.opacity = '0';
+                setTimeout(() => {
+                    hint.style.display = 'none';
+                }, 500);
+            }
+        }
+    </script>
+</body>
+</html>
