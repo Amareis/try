@@ -1,0 +1,1146 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Кудач: Визуализация вайбов</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        #info-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 300px;
+            font-size: 13px;
+            border: 1px solid #333;
+            z-index: 100;
+        }
+
+        #info-panel h2 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        #info-panel .stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        #info-panel .stat:last-child {
+            border-bottom: none;
+        }
+
+        #selected-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 8px;
+            padding: 15px;
+            width: 400px;
+            max-height: calc(100vh - 20px);
+            overflow-y: auto;
+            border: 1px solid #333;
+            z-index: 100;
+        }
+
+        #selected-panel h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #4fc3f7;
+        }
+
+        .event-card {
+            background: #252540;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .event-card:hover {
+            background: #353560;
+        }
+
+        .event-card.selected {
+            border: 2px solid #4fc3f7;
+        }
+
+        .event-card .title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        .event-card .group {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .event-card .content {
+            font-size: 12px;
+            color: #aaa;
+            line-height: 1.4;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+        }
+
+        .event-card .vibe-label {
+            font-size: 10px;
+            color: #4fc3f7;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        .event-card .vibe-content {
+            font-size: 12px;
+            color: #aaa;
+            line-height: 1.4;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #333;
+        }
+
+        .event-card .vibe-text {
+            color: #4fc3f7;
+        }
+
+        .event-card .card-body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #4fc3f7;
+        }
+
+        .controls {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #333;
+        }
+
+        .controls button {
+            background: #4fc3f7;
+            color: #000;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+
+        .controls button:hover {
+            background: #29b6f6;
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        #instructions span {
+            margin: 0 10px;
+        }
+        margin-top: 10px;
+        }
+
+        .filter-group label {
+            display: block;
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .filter-group select {
+            width: 100%;
+            padding: 5px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 4px;
+        }
+
+        .search-box {
+            margin-top: 10px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+<div id="container">
+    <div id="canvas-container"></div>
+    <div
+            id="crosshair"
+            style="
+                    display: none;
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    pointer-events: none;
+                "
+    >
+        <svg width="40" height="40" viewBox="0 0 40 40">
+            <circle
+                    cx="20"
+                    cy="20"
+                    r="15"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.6)"
+                    stroke-width="1"
+            />
+            <circle
+                    cx="20"
+                    cy="20"
+                    r="2"
+                    fill="rgba(255,255,255,0.8)"
+            />
+            <line
+                    x1="20"
+                    y1="0"
+                    x2="20"
+                    y2="12"
+                    stroke="rgba(255,255,255,0.6)"
+                    stroke-width="1"
+            />
+            <line
+                    x1="20"
+                    y1="28"
+                    x2="20"
+                    y2="40"
+                    stroke="rgba(255,255,255,0.6)"
+                    stroke-width="1"
+            />
+            <line
+                    x1="0"
+                    y1="20"
+                    x2="12"
+                    y2="20"
+                    stroke="rgba(255,255,255,0.6)"
+                    stroke-width="1"
+            />
+            <line
+                    x1="28"
+                    y1="20"
+                    x2="40"
+                    y2="20"
+                    stroke="rgba(255,255,255,0.6)"
+                    stroke-width="1"
+            />
+        </svg>
+    </div>
+
+    <div
+            id="selection-rect"
+            style="
+                    display: none;
+                    position: absolute;
+                    border: 2px solid rgba(79, 195, 247, 0.8);
+                    background: rgba(79, 195, 247, 0.1);
+                    pointer-events: none;
+                "
+    ></div>
+
+    <div
+            id="vibe-tooltip"
+            style="
+                    display: none;
+                    position: fixed;
+                    left: 10px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: rgba(0, 0, 0, 0.95);
+                    border: 1px solid #4fc3f7;
+                    border-radius: 8px;
+                    padding: 15px;
+                    max-width: 600px;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    z-index: 1000;
+                "
+    >
+        <div style="display: flex; gap: 20px;">
+            <div style="flex: 1;">
+                <div style="color: #888; font-size: 10px; margin-bottom: 4px;">текст</div>
+                <div id="vibe-tooltip-text" style="color: #aaa; font-size: 11px; line-height: 1.4;"></div>
+            </div>
+            <div style="flex: 1;">
+                <div style="color: #4fc3f7; font-size: 10px; margin-bottom: 4px;">вайб</div>
+                <div id="vibe-tooltip-vibe" style="color: #4fc3f7; font-size: 11px; line-height: 1.4;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading">Загрузка данных...</div>
+
+    <div id="info-panel" style="display: none">
+        <h2>📍 Статистика</h2>
+        <div class="stat">
+            <span>Всего событий:</span>
+            <span id="total-count">0</span>
+        </div>
+        <div class="stat">
+            <span>Выбрано:</span>
+            <span id="selected-count">0</span>
+        </div>
+        <div class="stat">
+            <span>Групп:</span>
+            <span id="groups-count">0</span>
+        </div>
+
+        <div class="controls">
+            <button onclick="clearSelection()">Очистить</button>
+            <button onclick="selectNearby()">Выбрать соседние</button>
+        </div>
+
+        <div class="search-box">
+            <input
+                    type="text"
+                    id="search"
+                    placeholder="Поиск по вайбу..."
+                    oninput="filterEvents()"
+            />
+        </div>
+
+        <div class="filter-group">
+            <label>Группа:</label>
+            <select id="group-filter" onchange="filterEvents()">
+                <option value="">Все группы</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="selected-panel" style="display: none">
+        <h3>
+            Выбранные события (<span id="selected-list-count">0</span>)
+        </h3>
+        <div id="events-list"></div>
+    </div>
+
+    <div id="instructions" style="display: none">
+        <span>🖱️ Клик - захват мыши</span>
+        <span>🖱️ Драг - выделить область</span>
+        <span>W/S/A/D - летать</span>
+        <span>E/Q - вверх/вниз</span>
+        <span>C - очистить</span>
+        <span>Space - отпустить мышь</span>
+    </div>
+</div>
+
+<script>
+    let scene, camera, renderer;
+    let points = [];
+    let events = [];
+    let selectedPoints = [];
+    let hoveredPoint = null;
+    let selectedMeshes = [];
+    let raycaster, mouse;
+
+    // FPS-style управление камерой
+    const keys = {
+        w: false,
+        a: false,
+        s: false,
+        d: false,
+        e: false,
+        q: false,
+    };
+    const MOVE_SPEED = 0.15;
+    const LOOK_SPEED = 0.003;
+    let cameraYaw = 0; // Start looking towards -Z (towards points)
+    let cameraPitch = 0;
+    let isPointerLocked = false;
+
+    // Drag selection state
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+
+    // Pointer lock functions
+    function onPointerLockChange() {
+        isPointerLocked =
+            document.pointerLockElement === renderer.domElement;
+        document.body.style.cursor = isPointerLocked
+            ? "none"
+            : "default";
+        document.getElementById("crosshair").style.display =
+            isPointerLocked ? "block" : "none";
+        if (!isPointerLocked) {
+            hoveredPoint = null;
+        }
+    }
+
+    function onCanvasMouseDown(event) {
+        if (!isPointerLocked && event.button === 0) {
+            isDragging = true;
+            dragStartX = event.clientX;
+            dragStartY = event.clientY;
+            document.getElementById("selection-rect").style.display =
+                "block";
+            document.getElementById("selection-rect").style.left =
+                dragStartX + "px";
+            document.getElementById("selection-rect").style.top =
+                dragStartY + "px";
+            document.getElementById("selection-rect").style.width =
+                "0px";
+            document.getElementById("selection-rect").style.height =
+                "0px";
+        }
+    }
+
+    function onCanvasMouseUp(event) {
+        if (!isPointerLocked && isDragging && event.button === 0) {
+            const rect = document.getElementById("selection-rect");
+            const width = parseInt(rect.style.width);
+            const height = parseInt(rect.style.height);
+
+            // Only select if dragged more than 5px
+            if (width > 5 || height > 5) {
+                selectPointsInRect();
+            } else {
+                // Single click - request pointer lock
+                renderer.domElement.requestPointerLock();
+            }
+
+            isDragging = false;
+            rect.style.display = "none";
+        }
+    }
+
+    function selectPointsInRect() {
+        const rect = document.getElementById("selection-rect");
+        const left = parseInt(rect.style.left);
+        const top = parseInt(rect.style.top);
+        const width = parseInt(rect.style.width);
+        const height = parseInt(rect.style.height);
+
+        // Normalize rect (handle negative width/height)
+        const minX = width < 0 ? left + width : left;
+        const maxX = width < 0 ? left : left + width;
+        const minY = height < 0 ? top + height : top;
+        const maxY = height < 0 ? top : top + height;
+
+        // Get all points that project into this rect
+        const projectedPoints = [];
+        points.forEach((point) => {
+            const screenPos = point.position.clone().project(camera);
+            const x = ((screenPos.x + 1) / 2) * window.innerWidth;
+            const y = ((-screenPos.y + 1) / 2) * window.innerHeight;
+
+            if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
+                projectedPoints.push(point);
+            }
+        });
+
+        if (projectedPoints.length > 0) {
+            projectedPoints.forEach((p) => {
+                if (
+                    !selectedPoints.find((sp) => sp.index === p.index)
+                ) {
+                    selectedPoints.push(p);
+                }
+            });
+            updateStats();
+            updateSelectedPanel();
+            highlightSelectedPoints();
+        }
+    }
+
+    // Цвета для групп
+    const groupColors = {};
+    const colorPalette = [
+        0x4fc3f7, 0xff7043, 0x66bb6a, 0xffca28, 0xab47bc, 0x26a69a,
+        0xec407a, 0x5c6bc0, 0x78909c, 0xffa726,
+    ];
+
+    function getGroupColor(groupId) {
+        if (!groupColors[groupId]) {
+            const groupKeys = Object.keys(groupColors);
+            const colorIndex = groupKeys.length % colorPalette.length;
+            groupColors[groupId] = colorPalette[colorIndex];
+        }
+        return groupColors[groupId];
+    }
+
+    function init() {
+        // Scene
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+
+        // Camera
+        camera = new THREE.PerspectiveCamera(
+            75,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            10000,
+        );
+        camera.position.set(3, 5, 20);
+
+        // Renderer
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document
+            .getElementById("canvas-container")
+            .appendChild(renderer.domElement);
+
+        // Raycaster for selection
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        // Load data
+        loadData();
+
+        // Event listeners
+        window.addEventListener("resize", onWindowResize);
+        renderer.domElement.addEventListener(
+            "mousedown",
+            onCanvasMouseDown,
+        );
+        renderer.domElement.addEventListener(
+            "mouseup",
+            onCanvasMouseUp,
+        );
+        document.addEventListener("click", onDocumentClick);
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("keydown", onKeyDown);
+        document.addEventListener("keyup", onKeyUp);
+        document.addEventListener("click", (e) => {
+            if (!e.target.closest(".event-card")) {
+                hideVibeTooltip();
+            }
+        });
+
+        // Pointer lock events
+        document.addEventListener(
+            "pointerlockchange",
+            onPointerLockChange,
+        );
+
+        animate();
+    }
+
+    function loadData() {
+        fetch("data/vibe_vectors.json")
+            .then((response) => response.json())
+            .then((data) => {
+                events = data;
+                createPoints(data);
+                document.getElementById("loading").style.display =
+                    "none";
+                document.getElementById("info-panel").style.display =
+                    "block";
+                document.getElementById(
+                    "selected-panel",
+                ).style.display = "block";
+                document.getElementById("instructions").style.display =
+                    "block";
+                updateStats();
+                populateGroupFilter();
+            })
+            .catch((err) => {
+                document.getElementById("loading").textContent =
+                    "Ошибка загрузки: " +
+                    err.message +
+                    ". Запусти vis_vibes.ipynb для генерации данных.";
+            });
+    }
+
+    function createPoints(data) {
+        // Создаём текстуру круга
+        const canvas = document.createElement("canvas");
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext("2d");
+        ctx.beginPath();
+        ctx.arc(32, 32, 28, 0, Math.PI * 2);
+        ctx.fillStyle = "white";
+        ctx.fill();
+        const texture = new THREE.CanvasTexture(canvas);
+
+        data.forEach((event, index) => {
+            const position = new THREE.Vector3(
+                event.x,
+                event.y,
+                event.z,
+            );
+            const color = new THREE.Color(
+                getGroupColor(event.group_id),
+            );
+
+            const material = new THREE.SpriteMaterial({
+                map: texture,
+                color: color,
+                transparent: true,
+                opacity: 0.98,
+            });
+            const sprite = new THREE.Sprite(material);
+            sprite.position.copy(position);
+            sprite.scale.set(0.07, 0.07, 1);
+            sprite.userData = { index: index, event: event };
+            sprite.name = "point";
+            scene.add(sprite);
+
+            points.push({
+                index: index,
+                position: position,
+                event: event,
+                sprite: sprite,
+            });
+        });
+
+        // Создаём group для raycasting
+        const pointGroup = new THREE.Group();
+        pointGroup.name = "pointCloud";
+        scene.add(pointGroup);
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function onMouseMove(event) {
+        // Looking (only when pointer is locked)
+        if (isPointerLocked) {
+            cameraYaw -= event.movementX * LOOK_SPEED;
+            cameraPitch -= event.movementY * LOOK_SPEED;
+            cameraPitch = Math.max(
+                -Math.PI / 2 + 0.1,
+                Math.min(Math.PI / 2 - 0.1, cameraPitch),
+            );
+        }
+
+        // Update drag selection rectangle
+        if (isDragging) {
+            const rect = document.getElementById("selection-rect");
+            const width = event.clientX - dragStartX;
+            const height = event.clientY - dragStartY;
+            rect.style.left =
+                (width < 0 ? event.clientX : dragStartX) + "px";
+            rect.style.top =
+                (height < 0 ? event.clientY : dragStartY) + "px";
+            rect.style.width = Math.abs(width) + "px";
+            rect.style.height = Math.abs(height) + "px";
+        }
+
+        // Hover detection (only when not locked and not dragging)
+        if (!isPointerLocked && !isDragging) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(
+                scene.children,
+            );
+
+            let closestSprite = null;
+            let closestDistance = Infinity;
+
+            for (const intersect of intersects) {
+                if (intersect.object.name === "point") {
+                    const dist = intersect.distance;
+                    if (dist < closestDistance) {
+                        closestDistance = dist;
+                        closestSprite = intersect.object;
+                    }
+                }
+            }
+
+            if (closestSprite) {
+                const point = points[closestSprite.userData.index];
+                if (hoveredPoint !== point) {
+                    hoveredPoint = point;
+                    hoverSprite(point.event.id);
+                }
+                document.body.style.cursor = "pointer";
+            } else {
+                hoveredPoint = null;
+                document.body.style.cursor = "default";
+            }
+        }
+    }
+
+    function onClick(event) {
+        // Select point if hovering (only when not locked)
+        if (!isPointerLocked && hoveredPoint) {
+            if (event.shiftKey) {
+                togglePointSelection(hoveredPoint);
+            } else {
+                clearSelection();
+                addPointToSelection(hoveredPoint);
+            }
+            updateSelectedPanel();
+            highlightSelectedPoints();
+        }
+    }
+
+    function onDocumentClick(event) {
+        if (isPointerLocked) {
+            mouse.x = 0;
+            mouse.y = 0;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(
+                scene.children,
+            );
+
+            for (const intersect of intersects) {
+                if (intersect.object.name === "point") {
+                    const point =
+                        points[intersect.object.userData.index];
+                    if (event.shiftKey) {
+                        togglePointSelection(point);
+                    } else {
+                        clearSelection();
+                        addPointToSelection(point);
+                    }
+                    updateSelectedPanel();
+                    highlightSelectedPoints();
+                    break;
+                }
+            }
+        }
+    }
+
+    // Russian keyboard layout mapping
+    const ruToEn = {
+        ц: "w",
+        ф: "a",
+        с: "c", // с - clear selection
+        ы: "s",
+        в: "d",
+        у: "e",
+        й: "q",
+        ё: "`",
+    };
+
+    function normalizeKey(key) {
+        const lower = key.toLowerCase();
+        return ruToEn[lower] || lower;
+    }
+
+    function onKeyDown(event) {
+        const key = normalizeKey(event.key);
+        keys[key] = true;
+        if (key === " ") {
+            event.preventDefault();
+            if (isPointerLocked) {
+                document.exitPointerLock();
+            }
+        }
+        if (key === "c") {
+            clearSelection();
+            updateStats();
+            updateSelectedPanel();
+            highlightSelectedPoints();
+        }
+    }
+
+    function onKeyUp(event) {
+        const key = normalizeKey(event.key);
+        keys[key] = false;
+    }
+
+    function getMoveSpeed() {
+        return keys.shift ? MOVE_SPEED / 3 : MOVE_SPEED;
+    }
+
+    function updateCameraPosition() {
+        const direction = new THREE.Vector3();
+        camera.getWorldDirection(direction);
+        const right = new THREE.Vector3();
+        right.crossVectors(direction, camera.up).normalize();
+        const speed = getMoveSpeed();
+
+        // W/S - вперёд/назад
+        if (keys.w) camera.position.addScaledVector(direction, speed);
+        if (keys.s) camera.position.addScaledVector(direction, -speed);
+
+        // A/D - стрейф влево/вправо
+        if (keys.a) camera.position.addScaledVector(right, -speed);
+        if (keys.d) camera.position.addScaledVector(right, speed);
+
+        // E/Q - вверх/вниз
+        if (keys.e) camera.position.y += speed;
+        if (keys.q) camera.position.y -= speed;
+
+        // Применяем поворот камеры
+        camera.rotation.order = "YXZ";
+        camera.rotation.y = cameraYaw;
+        camera.rotation.x = cameraPitch;
+    }
+
+    function togglePointSelection(point) {
+        const idx = selectedPoints.findIndex(
+            (p) => p.index === point.index,
+        );
+        if (idx >= 0) {
+            selectedPoints.splice(idx, 1);
+        } else {
+            selectedPoints.push(point);
+        }
+        updateStats();
+    }
+
+    function addPointToSelection(point) {
+        selectedPoints = [point];
+        updateStats();
+    }
+
+    function clearSelection() {
+        selectedPoints = [];
+        updateStats();
+        updateSelectedPanel();
+        highlightSelectedPoints();
+    }
+
+    function selectNearby() {
+        if (selectedPoints.length === 0) return;
+
+        const threshold = 0.5;
+        const nearby = [];
+
+        selectedPoints.forEach((selected) => {
+            points.forEach((point) => {
+                if (point.index === selected.index) return;
+
+                const distance = selected.position.distanceTo(
+                    point.position,
+                );
+                if (distance < threshold) {
+                    if (!nearby.find((p) => p.index === point.index)) {
+                        nearby.push(point);
+                    }
+                }
+            });
+        });
+
+        selectedPoints = [...selectedPoints, ...nearby];
+        updateStats();
+        updateSelectedPanel();
+        highlightSelectedPoints();
+    }
+
+    function highlightSelectedPoints() {
+        // Удаляем старые selection meshes
+        selectedMeshes.forEach((mesh) => scene.remove(mesh));
+        selectedMeshes = [];
+
+        // Создаём текстуру с полосками для спрайтов
+        const stripeCanvas = document.createElement("canvas");
+        stripeCanvas.width = 64;
+        stripeCanvas.height = 64;
+        const stripeCtx = stripeCanvas.getContext("2d");
+        for (let i = 0; i < 8; i++) {
+            if (i % 2 === 0) {
+                stripeCtx.fillStyle = "#4fc3f7";
+            } else {
+                stripeCtx.fillStyle = "#ffffff";
+            }
+            stripeCtx.beginPath();
+            stripeCtx.moveTo(32, 32);
+            stripeCtx.arc(
+                32,
+                32,
+                32,
+                (i * Math.PI) / 4,
+                ((i + 1) * Math.PI) / 4,
+            );
+            stripeCtx.closePath();
+            stripeCtx.fill();
+        }
+        const stripeTexture = new THREE.CanvasTexture(stripeCanvas);
+
+        // Применяем полосатую текстуру к выбранным спрайтам
+        selectedPoints.forEach((point) => {
+            if (point.sprite && !point.originalTexture) {
+                point.originalTexture = point.sprite.material.map;
+            }
+            if (point.sprite) {
+                point.sprite.material.map = stripeTexture;
+                point.sprite.material.needsUpdate = true;
+            }
+        });
+
+        // Сбрасываем текстуру у невыбранных точек
+        points.forEach((point) => {
+            const isSelected = selectedPoints.some(
+                (sp) => sp.index === point.index,
+            );
+            if (!isSelected && point.sprite && point.originalTexture) {
+                point.sprite.material.map = point.originalTexture;
+                point.sprite.material.needsUpdate = true;
+                point.originalTexture = null;
+            }
+        });
+    }
+
+    function updateStats() {
+        const uniqueGroups = new Set(events.map((e) => e.group_id));
+        document.getElementById("total-count").textContent =
+            events.length;
+        document.getElementById("selected-count").textContent =
+            selectedPoints.length;
+        document.getElementById("groups-count").textContent =
+            uniqueGroups.size;
+        document.getElementById("selected-list-count").textContent =
+            selectedPoints.length;
+    }
+
+    function populateGroupFilter() {
+        const select = document.getElementById("group-filter");
+        const groups = [...new Set(events.map((e) => e.group_id))];
+
+        groups.forEach((group) => {
+            const option = document.createElement("option");
+            option.value = group;
+            option.textContent = `Группа ${group}`;
+            select.appendChild(option);
+        });
+    }
+
+    function filterEvents() {
+        const searchText = document
+            .getElementById("search")
+            .value.toLowerCase();
+        const groupFilter =
+            document.getElementById("group-filter").value;
+
+        let filtered = events;
+
+        if (groupFilter) {
+            filtered = filtered.filter(
+                (e) => e.group_id == groupFilter,
+            );
+        }
+
+        if (searchText) {
+            filtered = filtered.filter(
+                (e) =>
+                    e.vibe.toLowerCase().includes(searchText) ||
+                    e.text.toLowerCase().includes(searchText),
+            );
+        }
+
+        updateSelectedPanel(filtered);
+    }
+
+    let lastHoveredSprite = null;
+    let currentTooltipIndex = null;
+    const cardData = {};
+
+    function clearHover() {
+        console.log("clearhover");
+        if (lastHoveredSprite) {
+            lastHoveredSprite.scale.set(0.07, 0.07, 1);
+            lastHoveredSprite = null;
+        }
+    }
+
+    function hoverSprite(eventId) {
+        clearHover();
+        const point = points.find((p) => p.event.id === eventId);
+        console.log({ point });
+        if (point && point.sprite) {
+            if (point.sprite === lastHoveredSprite) return;
+            point.sprite.scale.set(0.105, 0.105, 1);
+            lastHoveredSprite = point.sprite;
+        }
+    }
+
+    function updateSelectedPanel(filteredEvents = null) {
+        const container = document.getElementById("events-list");
+        const displayEvents =
+            filteredEvents || selectedPoints.map((p) => p.event);
+
+        cardData.displayEvents = displayEvents;
+
+        if (displayEvents.length === 0) {
+            container.innerHTML =
+                '<p style="color:#666;">Кликните на точку на графике</p>';
+            return;
+        }
+
+        container.innerHTML = displayEvents
+            .map(
+                (event, i) => `
+                <div class="event-card" onmouseenter="showFullText(${i})" onmouseleave="hideFullText(${i})" onclick="showVibeTooltip(${i})">
+                    <div class="card-body">
+                        <div class="title">${event.id}</div>
+                        <div class="group">Группа: ${event.group_id}</div>
+                        <div class="content" id="content-${i}">${event.text || ""}</div>
+                    </div>
+                </div>
+            `,
+            )
+            .join("");
+    }
+
+    function showFullText(index) {
+        const event =
+            selectedPoints[index]?.event ||
+            (cardData.displayEvents
+                ? cardData.displayEvents[index]
+                : null);
+        if (event && event.text) {
+            const contentEl = document.getElementById(
+                "content-" + index,
+            );
+            if (contentEl) {
+                contentEl.textContent = event.text;
+            }
+        }
+        if (event) {
+            hoverSprite(event.id);
+        }
+    }
+
+    function hideFullText(index) {
+        const event =
+            selectedPoints[index]?.event ||
+            (cardData.displayEvents
+                ? cardData.displayEvents[index]
+                : null);
+        if (event && event.text) {
+            const contentEl = document.getElementById(
+                "content-" + index,
+            );
+            contentEl.textContent = event.text;
+        }
+    }
+
+    function showVibeTooltip(index) {
+        const event =
+            selectedPoints[index]?.event ||
+            (cardData.displayEvents
+                ? cardData.displayEvents[index]
+                : null);
+        if (event) {
+            const tooltip = document.getElementById("vibe-tooltip");
+            // Toggle: if same index, hide
+            if (currentTooltipIndex === index) {
+                tooltip.style.display = "none";
+                currentTooltipIndex = null;
+                return;
+            }
+            const textEl = document.getElementById("vibe-tooltip-text");
+            const vibeEl = document.getElementById("vibe-tooltip-vibe");
+            textEl.textContent = event.text || "";
+            vibeEl.textContent = event.vibe || "Нет вайба";
+            tooltip.style.display = "block";
+            currentTooltipIndex = index;
+        }
+    }
+
+    function hideVibeTooltip() {
+        document.getElementById("vibe-tooltip").style.display = "none";
+        currentTooltipIndex = null;
+    }
+
+    function showVibe(index) {
+        const vibeEl = document.getElementById("vibe-" + index);
+        if (vibeEl) {
+            vibeEl.style.display = "block";
+        }
+        const event =
+            selectedPoints[index]?.event ||
+            (cardData.displayEvents
+                ? cardData.displayEvents[index]
+                : null);
+        console.log({ event });
+        if (event) {
+            hoverSprite(event.id);
+        }
+    }
+
+    function hideVibe(index) {
+        const vibeEl = document.getElementById("vibe-" + index);
+        if (vibeEl) {
+            vibeEl.style.display = "none";
+        }
+        clearHover();
+    }
+
+    function focusEvent(eventId) {
+        const point = points.find((p) => p.event.id === eventId);
+        if (point) {
+            camera.position.set(
+                point.position.x + 10,
+                point.position.y + 10,
+                point.position.z + 30,
+            );
+            camera.lookAt(point.position);
+        }
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        updateCameraPosition();
+        renderer.render(scene, camera);
+    }
+
+    init();
+</script>
+</body>
+</html>
